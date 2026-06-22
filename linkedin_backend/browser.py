@@ -18,7 +18,17 @@ import time
 
 from . import auth
 
-_LAUNCH_ARGS = ["--disable-blink-features=AutomationControlled"]
+_LAUNCH_ARGS = [
+    "--disable-blink-features=AutomationControlled",
+    "--disable-dev-shm-usage",  # use /tmp instead of /dev/shm (critical in containers)
+    "--no-sandbox",
+    "--disable-gpu",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "--disable-sync",
+    "--no-first-run",
+    "--mute-audio",
+]
 _VIEWPORT = {"width": 1280, "height": 900}
 _PROFILE_URL = "https://www.linkedin.com/in/{public_id}/"
 _FEED_URL = "https://www.linkedin.com/feed/"
