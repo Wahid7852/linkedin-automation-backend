@@ -46,14 +46,27 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    out_path = normalize.save_json(profile, args.output)
+    out_path = args.output or f"{profile.get('username') or 'profile'}.json"
+
+    # Download the photo to a local file (the LinkedIn URL expires) unless opted out.
+    if not args.no_photo:
+        import os
+
+        pic_path = normalize.download_image(
+            profile.get("profile_pic_url"), os.path.splitext(out_path)[0]
+        )
+        if pic_path:
+            profile["profile_pic_file"] = pic_path
+
+    normalize.save_json(profile, out_path)
     name = profile.get("name") or profile.get("username")
     counts = (
         f"{len(profile.get('experience', []))} exp, "
         f"{len(profile.get('education', []))} edu, "
         f"{len(profile.get('skills', []))} skills"
     )
-    print(f"Saved profile for {name!r} -> {out_path} ({counts})")
+    pic = f", photo -> {profile['profile_pic_file']}" if profile.get("profile_pic_file") else ""
+    print(f"Saved profile for {name!r} -> {out_path} ({counts}{pic})")
     return 0
 
 
@@ -78,6 +91,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_fetch.add_argument("url", help="LinkedIn profile URL (or bare public id).")
     p_fetch.add_argument("-o", "--output", help="Output JSON path (default <username>.json).")
     p_fetch.add_argument("--raw", action="store_true", help="Embed the raw captured payload too.")
+    p_fetch.add_argument(
+        "--no-photo", action="store_true",
+        help="Don't download the profile photo to a local file.",
+    )
     p_fetch.add_argument(
         "--headed", action="store_true",
         help="Show the browser window (default is hidden/headless).",

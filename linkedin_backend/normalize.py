@@ -258,6 +258,29 @@ def normalize(raw: dict, url: str, include_raw: bool = False) -> dict:
     }
 
 
+def download_image(url: str | None, dest_base: str) -> str | None:
+    """Download a profile photo to dest_base + extension. Returns the path or None.
+
+    LinkedIn's signed photo URLs expire, so saving a local copy gives a permanent
+    image. Failures are swallowed so a missing photo never breaks a fetch.
+    """
+    import urllib.request
+
+    if not url:
+        return None
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            ext = ".png" if "png" in resp.headers.get("Content-Type", "").lower() else ".jpg"
+            data = resp.read()
+        path = dest_base + ext
+        with open(path, "wb") as fh:
+            fh.write(data)
+        return path
+    except Exception:  # noqa: BLE001 - photo is best-effort
+        return None
+
+
 def save_json(data: dict, out_path: str | None = None) -> str:
     """Write the normalized profile to disk; default filename is <username>.json."""
     if out_path is None:

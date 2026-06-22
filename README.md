@@ -148,10 +148,13 @@ Worth knowing: every request runs the browser in the background and takes roughl
     { "title": "DevOps Team Lead", "company": "Lixta Network", "duration": "Jan 2025 - Present", "location": "Mumbai, Maharashtra, India" }
   ],
   "profile_pic_url": "https://media.licdn.com/...",
+  "profile_pic_file": "wahidkhan7852.jpg",
   "sections_text": { "about": "...", "experience": "...", "education": "..." },
   "fetched_at": "2026-06-22T08:55:40Z"
 }
 ```
+
+The profile photo is downloaded to a file next to the JSON (same name, `.jpg`), and `profile_pic_file` points to it. LinkedIn's `profile_pic_url` is a signed link that expires after a couple of weeks, so the local copy is the one to keep. Pass `--no-photo` if you only want the JSON.
 
 The `sections_text` field keeps the raw text of each section exactly as it showed up on the page. It is there as a fallback if the structured parsing ever misses a field, and it makes a good input if you later want to generate a written summary.
 
