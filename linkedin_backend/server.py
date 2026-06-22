@@ -22,7 +22,7 @@ app = FastAPI(title="LinkedIn Profile Fetcher", version="0.2.0")
 class ProfileRequest(BaseModel):
     url: str
     raw: bool = False
-    headless: bool = False
+    headless: bool = True
 
 
 @app.get("/health")

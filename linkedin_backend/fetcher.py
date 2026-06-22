@@ -23,7 +23,7 @@ def extract_public_id(url: str) -> str:
     raise ValueError(f"Could not extract a LinkedIn public id from: {url!r}")
 
 
-def fetch_raw(public_id: str, headless: bool = False) -> dict:
+def fetch_raw(public_id: str, headless: bool = True) -> dict:
     """Drive the browser to the profile page and capture its Voyager responses."""
     result = browser.fetch_profile_xhr(public_id, headless=headless)
     result["public_id"] = public_id

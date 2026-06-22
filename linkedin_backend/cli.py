@@ -38,7 +38,7 @@ def _cmd_fetch(args: argparse.Namespace) -> int:
     from . import normalize
 
     try:
-        profile = sources.fetch(args.url, include_raw=args.raw, headless=args.headless)
+        profile = sources.fetch(args.url, include_raw=args.raw, headless=not args.headed)
     except auth.AuthError as exc:
         print(f"{exc}", file=sys.stderr)
         return 1
@@ -70,7 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ff = sub.add_parser(
         "import-firefox",
-        help="Seed the session from your existing Firefox LinkedIn login.",
+        help="Seed the session from your existing Firefox LinkedIn login (opens a window once).",
     )
     p_ff.set_defaults(func=_cmd_import_firefox)
 
@@ -79,8 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_fetch.add_argument("-o", "--output", help="Output JSON path (default <username>.json).")
     p_fetch.add_argument("--raw", action="store_true", help="Embed the raw captured payload too.")
     p_fetch.add_argument(
-        "--headless", action="store_true",
-        help="Run the browser headless (less reliable; may trigger detection).",
+        "--headed", action="store_true",
+        help="Show the browser window (default is hidden/headless).",
     )
     p_fetch.set_defaults(func=_cmd_fetch)
 

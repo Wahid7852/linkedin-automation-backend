@@ -73,7 +73,7 @@ def login(profile_dir: str = auth.DEFAULT_PROFILE_DIR, timeout_s: int = 300) -> 
     print(f"Logged in. Session saved to {profile_dir}")
 
 
-def seed_from_firefox(profile_dir: str = auth.DEFAULT_PROFILE_DIR) -> None:
+def seed_from_firefox(profile_dir: str = auth.DEFAULT_PROFILE_DIR, headless: bool = False) -> None:
     """Seed the persistent profile from an existing Firefox session (no login)."""
     from playwright.sync_api import sync_playwright
 
@@ -82,19 +82,34 @@ def seed_from_firefox(profile_dir: str = auth.DEFAULT_PROFILE_DIR) -> None:
     cookies = firefox.find_linkedin_cookies()
     with sync_playwright() as p:
         ctx = p.chromium.launch_persistent_context(
-            profile_dir, headless=False, args=_LAUNCH_ARGS, viewport=_VIEWPORT
+            profile_dir, headless=headless, args=_LAUNCH_ARGS, viewport=_VIEWPORT
         )
         ctx.add_cookies(cookies)
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
-        page.goto(_FEED_URL, wait_until="domcontentloaded")
-        time.sleep(5.0)  # let LinkedIn JS mint browser-valid bot-check cookies
-        logged_in = not _is_logged_out(page)
+
+        # PerimeterX can bounce the first hit; warm up on the homepage, then
+        # retry the feed a few times so its JS can mint browser-valid cookies.
+        logged_in = False
+        for attempt in range(4):
+            try:
+                page.goto("https://www.linkedin.com", wait_until="domcontentloaded", timeout=30000)
+                time.sleep(2.0)
+                page.goto(_FEED_URL, wait_until="domcontentloaded", timeout=30000)
+            except Exception:  # noqa: BLE001 - transient nav aborts, retry
+                time.sleep(3.0)
+                continue
+            time.sleep(5.0)
+            if not _is_logged_out(page):
+                logged_in = True
+                break
+            time.sleep(3.0)
         ctx.close()
 
     if not logged_in:
         raise auth.AuthError(
-            "Seeded Firefox cookies but LinkedIn didn't accept the session. "
-            "Use `login` to sign in directly instead."
+            "Seeded Firefox cookies but LinkedIn didn't accept the session "
+            "(possibly a temporary bot-check). Wait a few minutes and retry, or "
+            "use `login` to sign in directly."
         )
     print(f"Seeded {len(cookies)} cookies from Firefox -> {profile_dir}")
 
@@ -102,8 +117,8 @@ def seed_from_firefox(profile_dir: str = auth.DEFAULT_PROFILE_DIR) -> None:
 def fetch_profile_xhr(
     public_id: str,
     profile_dir: str = auth.DEFAULT_PROFILE_DIR,
-    headless: bool = False,
-    scroll_passes: int = 6,
+    headless: bool = True,
+    scroll_passes: int = 18,
 ) -> dict:
     """Navigate to a profile and capture the Voyager XHR responses + DOM fallback.
 

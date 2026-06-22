@@ -12,12 +12,12 @@ A few facts worth knowing up front, they explain the parts that look odd:
 - They run PerimeterX bot detection. Plain HTTP requests get blocked after a call or two even when you pass valid cookies. Libraries that fake a browser's network fingerprint run into a JavaScript challenge they can't pass.
 - So the only thing that holds up is an actual logged-in browser. This project uses Playwright to open Chromium, visit the profile page the way a person would, scroll to load everything, and read the data off the rendered page.
 
-One consequence: the browser window has to be visible. Running it headless gets detected and you get the "Join LinkedIn" wall instead of real data.
+The one-time login has to happen in a visible window (you sign in, and LinkedIn's bot check only trusts a real visible browser for that step). After that, fetching profiles runs hidden in the background, no window pops up.
 
 ## What you need
 
 - Python 3.11 (3.12 is fine too). Avoid 3.14, one of the dependencies won't build on it.
-- A display. The browser opens a real window, so a normal desktop works out of the box. Over SSH you'd need X forwarding or something like xvfb.
+- A display, but only for the one-time login. That step opens a real window. Fetching profiles afterward runs headless, so a normal desktop is fine, and even a headless server works once the session is set up. Over SSH the login step needs X forwarding or something like xvfb.
 - A LinkedIn account. Either one you're already signed into in Firefox, or one you log into when the tool asks.
 
 ## Setup
@@ -41,7 +41,7 @@ cp .env.example .env
 
 ## Log in once
 
-The tool keeps a logged-in session on disk and reuses it. You set that up once, two ways to choose from.
+The tool keeps a logged-in session on disk and reuses it. You set that up once, and this step opens a browser window (it's the only step that does). Two ways to choose from.
 
 Reuse your Firefox login. If you're already signed into LinkedIn in Firefox, this lifts that session, no typing:
 
@@ -49,7 +49,7 @@ Reuse your Firefox login. If you're already signed into LinkedIn in Firefox, thi
 python -m linkedin_backend.cli import-firefox
 ```
 
-Or log in yourself. This opens a browser window, you sign in (2FA and all), and it saves the session:
+Or log in yourself. A browser window opens, you sign in (2FA and all), and it saves the session:
 
 ```bash
 python -m linkedin_backend.cli login
@@ -57,13 +57,21 @@ python -m linkedin_backend.cli login
 
 Either way the session lands in `.pw-profile/`. It lasts a few days. When it expires you just run one of these again.
 
+If `import-firefox` says LinkedIn didn't accept the session, that's usually a temporary bot check. Wait a few minutes and run it again, or use `login` instead.
+
 ## Fetch a profile from the command line
 
 ```bash
 python -m linkedin_backend.cli fetch https://www.linkedin.com/in/wahidkhan7852/
 ```
 
-That writes `wahidkhan7852.json` in the current folder.
+That writes `wahidkhan7852.json` in the current folder. No window opens, it runs in the background.
+
+If you want to watch it work (handy for debugging), add `--headed` to open the browser window:
+
+```bash
+python -m linkedin_backend.cli fetch https://www.linkedin.com/in/wahidkhan7852/ --headed
+```
 
 Choose your own filename:
 
@@ -118,7 +126,7 @@ curl -s -X POST http://localhost:8000/profile \
   -d '{"url": "https://www.linkedin.com/in/wahidkhan7852/"}' | jq
 ```
 
-Worth knowing: every request opens the browser and takes roughly 20 to 40 seconds, and requests run one at a time. This is meant for low volume, single person use, not as a public API.
+Worth knowing: every request runs the browser in the background and takes roughly 20 to 40 seconds, and requests run one at a time. This is meant for low volume, single person use, not as a public API.
 
 ## What you get back
 
@@ -176,7 +184,7 @@ curl -s -X POST http://localhost:8000/profile \
 ## When something breaks
 
 - You get "Join LinkedIn" or empty data: your session expired, run `import-firefox` or `login` again.
-- The browser won't open, or you see a display error: you need a visible screen, this does not run headless.
+- The login step fails with a display error: that step needs a visible screen. Fetching afterward runs headless and is fine without one.
 - The server returns 401: same cause, no valid session, log in again.
 - A single section comes back empty: LinkedIn may have shuffled its layout. The raw text for that section is still in `sections_text`.
 
