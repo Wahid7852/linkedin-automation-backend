@@ -1,0 +1,2 @@
+[tool.vercel]
+entrypoint = "linkedin_backend.server:app"
