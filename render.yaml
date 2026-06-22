@@ -5,6 +5,8 @@ services:
     buildCommand: pip install -r requirements.txt && playwright install chromium --with-deps
     startCommand: uvicorn linkedin_backend.server:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/project/src/.playwright-browsers
       - key: LI_AT
         sync: false
       - key: LI_JSESSIONID
