@@ -158,18 +158,60 @@ The profile photo is downloaded to a file next to the JSON (same name, `.jpg`), 
 
 The `sections_text` field keeps the raw text of each section exactly as it showed up on the page. It is there as a fallback if the structured parsing ever misses a field, and it makes a good input if you later want to generate a written summary.
 
+## Deploy to Render
+
+`render.yaml` is included so Render can pick up the config automatically.
+
+1. Create a new **Web Service** on Render, point it at this repo.
+2. Render will detect `render.yaml` and fill in the build and start commands. If it asks manually:
+   - **Build command:** `pip install -r requirements.txt && playwright install chromium --with-deps`
+   - **Start command:** `uvicorn linkedin_backend.server:app --host 0.0.0.0 --port $PORT`
+3. Set your session cookies as environment variables (see below).
+
+No persistent disk needed. The service is stateless when you use external cookies.
+
+## Providing a session without logging in
+
+If you have a LinkedIn session from another account (or a friend's spare account), you can inject the cookies directly without ever running a browser login on the server.
+
+**Option 1 - Environment variables (recommended for Render):**
+
+Set these in the Render dashboard under Environment:
+
+| Variable | Value |
+|---|---|
+| `LI_AT` | the `li_at` cookie value |
+| `LI_JSESSIONID` | the `JSESSIONID` cookie value |
+
+They are injected automatically on every request and survive restarts.
+
+**Option 2 - POST at runtime:**
+
+```bash
+curl -X POST https://your-app.onrender.com/session \
+  -H "Content-Type: application/json" \
+  -d '{"li_at": "...", "jsessionid": "..."}'
+```
+
+This is in-memory and resets when the service restarts.
+
+**How to get the cookie values:**
+
+In Chrome or Firefox, go to `linkedin.com`, open DevTools -> Application (Chrome) or Storage (Firefox) -> Cookies -> `https://www.linkedin.com`. Copy the values for `li_at` and `JSESSIONID`.
+
 ## Endpoints
 
-- `GET /health` returns the status and whether a logged-in session exists.
-- `POST /profile` takes `{"url": "..."}` and returns the JSON shown above. You can also pass `"raw": true` to include the raw capture.
+- `GET /health` - returns status and whether a session is available.
+- `POST /session` - inject LinkedIn cookies at runtime: `{"li_at": "...", "jsessionid": "..."}`.
+- `POST /profile` - fetch a profile: `{"url": "..."}`. Add `"raw": true` to include raw captured data.
 
 ## Checking it yourself
 
 A quick way to confirm everything works, from a fresh clone:
 
 ```bash
-# 1. session check, should say a session exists after you logged in
-python -c "from linkedin_backend import auth; print('session:', auth.profile_exists())"
+# 1. session check, should say a session exists after you logged in or set cookies
+python -c "from linkedin_backend import auth; print('session:', auth.has_session())"
 
 # 2. fetch your own profile and look at it
 python -m linkedin_backend.cli fetch https://www.linkedin.com/in/wahidkhan7852/
