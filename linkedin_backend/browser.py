@@ -145,6 +145,12 @@ def fetch_profile_xhr(
             ctx = p.chromium.launch_persistent_context(
                 profile_dir, headless=headless, args=_LAUNCH_ARGS, viewport=_VIEWPORT
             )
+            ext = auth.get_cookies()
+            if ext:
+                ctx.add_cookies([
+                    {"name": "li_at", "value": ext["li_at"], "domain": ".linkedin.com", "path": "/"},
+                    {"name": "JSESSIONID", "value": ext["JSESSIONID"], "domain": ".linkedin.com", "path": "/"},
+                ])
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
 
             # Warm up on the feed first: a cold launch navigating straight to a

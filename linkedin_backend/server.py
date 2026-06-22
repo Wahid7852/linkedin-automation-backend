@@ -25,9 +25,20 @@ class ProfileRequest(BaseModel):
     headless: bool = True
 
 
+class SessionRequest(BaseModel):
+    li_at: str
+    jsessionid: str
+
+
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "session": auth.profile_exists()}
+    return {"status": "ok", "session": auth.has_session()}
+
+
+@app.post("/session")
+def set_session(req: SessionRequest) -> dict:
+    auth.set_cookies(req.li_at, req.jsessionid)
+    return {"status": "ok"}
 
 
 @app.post("/profile")
